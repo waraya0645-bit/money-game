@@ -22,35 +22,10 @@ public class GameManager : MonoBehaviour
     private int[] moneyAtChoice = new int[10];
     private int[] moneyAfterChoice = new int[10];
 
-    // 問題文。添付Pagesファイルから日本語部分を正常に抽出できなかったため、
-    // 元の問題文をここに戻してください。
-    private string[] textsA =
-    {
-        "Aの1問目",
-        "Aの2問目",
-        "Aの3問目",
-        "Aの4問目",
-        "Aの5問目",
-        "Aの6問目",
-        "Aの7問目",
-        "Aの8問目",
-        "Aの9問目",
-        "Aの10問目"
-    };
-
-    private string[] textsB =
-    {
-        "Bの1問目",
-        "Bの2問目",
-        "Bの3問目",
-        "Bの4問目",
-        "Bの5問目",
-        "Bの6問目",
-        "Bの7問目",
-        "Bの8問目",
-        "Bの9問目",
-        "Bの10問目"
-    };
+    // 問題文の個別上書き。
+    // 空欄なら、計算方法・確率・報酬額から説明文を自動生成する。
+    [SerializeField] private string[] customQuestionTextsA = new string[10];
+    [SerializeField] private string[] customQuestionTextsB = new string[10];
 
     // =========================================================
     // 計算方法
@@ -297,8 +272,99 @@ public class GameManager : MonoBehaviour
         int remainingDays = 11 - round;
         questionText.text = "残り" + remainingDays + "日";
 
-        leftButtonText.text = textsA[round - 1];
-        rightButtonText.text = textsB[round - 1];
+        int questionIndex = round - 1;
+
+        leftButtonText.text = GetChoiceDisplayText(
+            questionIndex,
+            scoreCalculationMethodsA[questionIndex],
+            probabilitiesA,
+            outcomeMoneyA,
+            customQuestionTextsA
+        );
+
+        rightButtonText.text = GetChoiceDisplayText(
+            questionIndex,
+            scoreCalculationMethodsB[questionIndex],
+            probabilitiesB,
+            outcomeMoneyB,
+            customQuestionTextsB
+        );
+    }
+
+    // =========================================================
+    // 選択肢の説明文を自動生成
+    // =========================================================
+
+    private string GetChoiceDisplayText(
+        int questionIndex,
+        ScoreCalculationMethod method,
+        int[,] probabilities,
+        int[,] rewards,
+        string[] customTexts)
+    {
+        // 手動入力がある場合は、自動生成より優先する
+        if (customTexts != null &&
+            questionIndex >= 0 &&
+            questionIndex < customTexts.Length &&
+            !string.IsNullOrWhiteSpace(customTexts[questionIndex]))
+        {
+            return customTexts[questionIndex];
+        }
+
+        string displayText = "";
+
+        for (int i = 0; i < 3; i++)
+        {
+            int probability = probabilities[questionIndex, i];
+            int reward = rewards[questionIndex, i];
+
+            // 確率0％、または報酬0の結果は表示しない
+            if (probability <= 0 || reward == 0)
+                continue;
+
+            string effect;
+
+            switch (method)
+            {
+                case ScoreCalculationMethod.AddReward:
+                    effect = FormatSignedCompactAmount(reward);
+                    break;
+
+                case ScoreCalculationMethod.AddRewardEveryAnswer:
+                    effect = "毎ターン" + FormatSignedCompactAmount(reward);
+                    break;
+
+                case ScoreCalculationMethod.AddCurrentScore:
+                    // CalculateScore内の現在の整数除算と同じ倍率にする。
+                    // 例：reward=-50なら1倍、reward=100なら2倍。
+                    int multiplier = 1 + reward / 100;
+                    effect = "所持金を" + multiplier + "倍";
+                    break;
+
+                default:
+                    effect = FormatSignedCompactAmount(reward);
+                    break;
+            }
+
+            if (displayText.Length > 0)
+                displayText += "\n";
+
+            displayText += probability + "％で" + effect;
+        }
+
+        return displayText.Length > 0 ? displayText : "変化なし";
+    }
+
+    // 例：50000 → +5万、-20000 → -2万
+    private string FormatSignedCompactAmount(int amount)
+    {
+        string sign = amount > 0 ? "+" : "";
+        long value = amount;
+
+        if (value % 10000L == 0)
+            return sign + (value / 10000L).ToString("N0") + "万";
+
+        return sign + value.ToString("N0");
     }
 
     // =========================================================
