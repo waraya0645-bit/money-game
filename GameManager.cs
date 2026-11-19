@@ -264,11 +264,16 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        // Dキーでデバッグモードを開閉する（問題進行中のみ）
+        // Dキーでデバッグモードを開閉する
+        // タイトル画面・問題画面・リザルト画面・詳細画面で使用できる
         // 入力欄に文字を入力している間は、Dをショートカットとして扱わない
-        if (currentState == GameState.Question &&
-            gameplayPanel != null &&
-            gameplayPanel.activeSelf &&
+        bool canOpenDebugMode =
+            currentState == GameState.Title ||
+            currentState == GameState.Question ||
+            currentState == GameState.FinalResult ||
+            currentState == GameState.Detail;
+
+        if (canOpenDebugMode &&
             Input.GetKeyDown(KeyCode.D) &&
             GUIUtility.keyboardControl == 0)
         {
