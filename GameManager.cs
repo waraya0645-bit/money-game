@@ -152,6 +152,7 @@ public class GameManager : MonoBehaviour
     public Text resultDetailText;
     public GameObject detailButton;
     public Text detailButtonText;
+    public GameObject returnToTitleButton;
     public Text questionTimerText;
 
     public GameObject titlePanel;
@@ -236,6 +237,9 @@ public class GameManager : MonoBehaviour
 
         if (answerResultPanel != null)
             answerResultPanel.SetActive(false);
+
+        if (returnToTitleButton != null)
+            returnToTitleButton.SetActive(false);
 
         if (dimOverlay != null)
             dimOverlay.SetActive(false);
@@ -881,6 +885,9 @@ public class GameManager : MonoBehaviour
         resultTendencyText.gameObject.SetActive(true);
 
         detailButton.SetActive(true);
+
+        if (returnToTitleButton != null)
+            returnToTitleButton.SetActive(true);
     }
 
     // =========================================================
@@ -952,6 +959,90 @@ public class GameManager : MonoBehaviour
             HideDetail();
         else
             ShowDetails();
+    }
+
+    // =========================================================
+    // タイトル画面へ戻る
+    // =========================================================
+
+    public void ReturnToTitle()
+    {
+        // タイマーや画面遷移など、進行中のコルーチンを停止する
+        StopAllCoroutines();
+        questionTimerCoroutine = null;
+        moneyAnimationCoroutine = null;
+
+        // ゲームの進行状況を初期状態へ戻す
+        currentState = GameState.Title;
+        score = -1000000;
+        displayedScore = score;
+        round = 1;
+        selected = null;
+        isShowingAnswerResult = false;
+        recurringBonusPerAnswer = 0;
+
+        pendingBeforeMoney = score;
+        pendingGained = 0;
+        pendingAfterMoney = score;
+        pendingTimeout = false;
+
+        for (int i = 0; i < 10; i++)
+        {
+            selectedValues[i] = -1;
+            selectedChoices[i] = null;
+            moneyAtChoice[i] = 0;
+            moneyAfterChoice[i] = 0;
+        }
+
+        // 表示中の結果・詳細画面を閉じる
+        if (questionTimerText != null)
+            questionTimerText.gameObject.SetActive(false);
+
+        if (answerResultPanel != null)
+            answerResultPanel.SetActive(false);
+
+        if (dimOverlay != null)
+            dimOverlay.SetActive(false);
+
+        if (resultDetailText != null)
+            resultDetailText.gameObject.SetActive(false);
+
+        if (resultMoneyText != null)
+            resultMoneyText.gameObject.SetActive(false);
+
+        if (resultTendencyText != null)
+            resultTendencyText.gameObject.SetActive(false);
+
+        if (detailButton != null)
+            detailButton.SetActive(false);
+
+        if (returnToTitleButton != null)
+            returnToTitleButton.SetActive(false);
+
+        if (detailButtonText != null)
+            detailButtonText.text = "詳細";
+
+        if (endingPanels != null)
+        {
+            foreach (GameObject panel in endingPanels)
+            {
+                if (panel != null)
+                    panel.SetActive(false);
+            }
+        }
+
+        // 結果画面とゲーム画面を閉じ、タイトル画面を表示する
+        if (resultPanel != null)
+            resultPanel.SetActive(false);
+
+        if (gameplayPanel != null)
+            gameplayPanel.SetActive(false);
+
+        if (titlePanel != null)
+            titlePanel.SetActive(true);
+
+        UpdateMoneyText();
+        UpdateQuestionText();
     }
 
     // =========================================================
