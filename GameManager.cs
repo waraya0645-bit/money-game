@@ -820,31 +820,31 @@ public class GameManager : MonoBehaviour
         {
             tendencyIndex = 0;
             tendencyName = "チキン";
-            description = "慎重な選択を大切にするタイプです。";
+            description = "チキン";
         }
         else if (safeCount > 5)
         {
             tendencyIndex = 1;
             tendencyName = "安全志向";
-            description = "リスクを避け、安定を重視するタイプです。";
+            description = "ややチキン";
         }
         else if (riskCount == 9)
         {
             tendencyIndex = 2;
-            tendencyName = "バカ";
-            description = "大胆な選択を好むタイプです。";
+            tendencyName = "ギャンブラー";
+            description = "ギャンブラー";
         }
         else if (riskCount > 5)
         {
             tendencyIndex = 3;
             tendencyName = "リスク志向";
-            description = "大きな結果を狙って挑戦するタイプです。";
+            description = "ややギャンブラー";
         }
         else
         {
             tendencyIndex = 4;
             tendencyName = "バランス型";
-            description = "安全とリスクを使い分けるタイプです。";
+            description = "普通";
         }
 
         resultTendencyText.text = "選択傾向：" + tendencyName;
