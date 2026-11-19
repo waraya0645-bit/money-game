@@ -3,6 +3,9 @@ using UnityEngine.UI;
 using System.Collections;
 using System.IO;
 using System.Text;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class GameManager : MonoBehaviour
 {
@@ -28,6 +31,7 @@ public class GameManager : MonoBehaviour
     private string[] debugRewardInputs = new string[3];
     private string debugCustomTextInput = "";
     private string debugValidationMessage = "";
+    private string debugSavedFilePath = "";
 
     private int[] valuesA = { 0, 0, 1, 1, 0, 1, 0, 0, 0, 0 };
     private int[] valuesB = { 1, 1, 0, 0, 1, 0, 1, 1, 1, 0 };
@@ -609,6 +613,33 @@ public class GameManager : MonoBehaviour
         if (GUILayout.Button("GameManager.cs用コードをコピー・保存", GUILayout.Height(40f)))
             SaveDebugSettingsCode();
 
+        if (!string.IsNullOrEmpty(debugSavedFilePath))
+        {
+            GUILayout.Space(6f);
+            GUILayout.Label("保存したファイルの場所");
+            GUILayout.TextField(debugSavedFilePath);
+
+            GUILayout.BeginHorizontal();
+
+            if (GUILayout.Button("保存先をコピー", GUILayout.Height(32f)))
+            {
+                GUIUtility.systemCopyBuffer = debugSavedFilePath;
+                debugValidationMessage = "保存先をクリップボードにコピーしました。";
+            }
+
+#if UNITY_EDITOR
+            if (GUILayout.Button("保存したファイルを表示", GUILayout.Height(32f)))
+            {
+                if (File.Exists(debugSavedFilePath))
+                    EditorUtility.RevealInFinder(debugSavedFilePath);
+                else
+                    debugValidationMessage = "保存ファイルが見つかりません。";
+            }
+#endif
+
+            GUILayout.EndHorizontal();
+        }
+
         if (!string.IsNullOrEmpty(debugValidationMessage))
             GUILayout.Label(debugValidationMessage);
 
@@ -628,16 +659,36 @@ public class GameManager : MonoBehaviour
         // すぐに貼り付けられるよう、クリップボードにもコピーする
         GUIUtility.systemCopyBuffer = code;
 
+        // Unityエディターで実行している場合はAssets直下へ保存する。
+        // ビルド版ではアプリ専用の保存領域へ保存する。
+#if UNITY_EDITOR
+        string saveDirectory = Application.dataPath;
+#else
+        string saveDirectory = Application.persistentDataPath;
+#endif
+
         string savePath = Path.Combine(
-            Application.persistentDataPath,
+            saveDirectory,
             "GameManagerSettings.txt"
         );
 
         try
         {
+            Directory.CreateDirectory(saveDirectory);
             File.WriteAllText(savePath, code, Encoding.UTF8);
+            debugSavedFilePath = savePath;
+
+#if UNITY_EDITOR
+            AssetDatabase.Refresh();
+#endif
+
+#if UNITY_EDITOR
             debugValidationMessage =
-                "コードをコピーし、ファイルにも保存しました。保存先：" + savePath;
+                "コードをコピーし、Assets/GameManagerSettings.txt に保存しました。";
+#else
+            debugValidationMessage =
+                "コードをコピーし、アプリの保存領域に保存しました。下の「保存先をコピー」で場所をコピーできます。";
+#endif
         }
         catch (System.Exception exception)
         {
