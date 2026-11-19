@@ -1042,7 +1042,7 @@ public class GameManager : MonoBehaviour
 
             case ScoreCalculationMethod.AddCurrentScore:
                 return currentScore
-                    + currentScore * (reward / 100)
+                    + currentScore * reward / 100
                     + recurringBonusPerAnswer;
 
             case ScoreCalculationMethod.AddRewardEveryAnswer:
