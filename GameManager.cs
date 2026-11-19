@@ -335,10 +335,9 @@ public class GameManager : MonoBehaviour
                     break;
 
                 case ScoreCalculationMethod.AddCurrentScore:
-                    // CalculateScore内の現在の整数除算と同じ倍率にする。
-                    // 例：reward=-50なら1倍、reward=100なら2倍。
-                    int multiplier = 1 + reward / 100;
-                    effect = "所持金を" + multiplier + "倍";
+                    // 実際の計算式 currentScore + currentScore * reward / 100
+                    // に対応する倍率を分数で表示する。
+                    effect = "所持金を" + FormatScoreMultiplier(reward);
                     break;
 
                 default:
@@ -365,6 +364,37 @@ public class GameManager : MonoBehaviour
             return sign + (value / 10000L).ToString("N0") + "万";
 
         return sign + value.ToString("N0");
+    }
+
+    // 現在の所持金に対する倍率を分数で表示する。
+    // reward=-50なら1/2倍、reward=100なら2倍。
+    private string FormatScoreMultiplier(int reward)
+    {
+        long numerator = 100L + reward;
+        long denominator = 100L;
+
+        long absNumerator = numerator < 0L ? -numerator : numerator;
+        long divisor = GreatestCommonDivisor(absNumerator, denominator);
+
+        numerator /= divisor;
+        denominator /= divisor;
+
+        if (denominator == 1L)
+            return numerator + "倍";
+
+        return numerator + "/" + denominator + "倍";
+    }
+
+    private long GreatestCommonDivisor(long a, long b)
+    {
+        while (b != 0L)
+        {
+            long remainder = a % b;
+            a = b;
+            b = remainder;
+        }
+
+        return a == 0L ? 1L : a;
     }
 
     // =========================================================
