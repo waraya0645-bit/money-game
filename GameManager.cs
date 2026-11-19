@@ -14,6 +14,20 @@ public class GameManager : MonoBehaviour
     private int round = 1;
     private bool isShowingAnswerResult = false;
 
+    // デバッグモード
+    private bool debugMode = false;
+    private bool debugTimerPaused = false;
+    private float questionTimeRemaining = 20f;
+    private Rect debugWindowRect = new Rect(20f, 20f, 540f, 650f);
+    private Vector2 debugScrollPosition;
+    private int debugSelectedQuestion;
+    private int debugSelectedChoice;
+    private int debugCalculationMethodIndex;
+    private string[] debugProbabilityInputs = new string[3];
+    private string[] debugRewardInputs = new string[3];
+    private string debugCustomTextInput = "";
+    private string debugValidationMessage = "";
+
     private int[] valuesA = { 0, 0, 1, 1, 0, 1, 0, 0, 0, 0 };
     private int[] valuesB = { 1, 1, 0, 0, 1, 0, 1, 1, 1, 0 };
 
@@ -250,6 +264,21 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
+        // Dキーでデバッグモードを開閉する（問題進行中のみ）
+        // 入力欄に文字を入力している間は、Dをショートカットとして扱わない
+        if (currentState == GameState.Question &&
+            gameplayPanel != null &&
+            gameplayPanel.activeSelf &&
+            Input.GetKeyDown(KeyCode.D) &&
+            GUIUtility.keyboardControl == 0)
+        {
+            ToggleDebugMode();
+        }
+
+        // デバッグ画面を操作している間は、ゲーム側のタップ処理を行わない
+        if (debugMode)
+            return;
+
         if (currentState != GameState.MoneyAnimating)
             return;
 
@@ -402,6 +431,292 @@ public class GameManager : MonoBehaviour
     }
 
     // =========================================================
+    // デバッグモード
+    // =========================================================
+
+    private void ToggleDebugMode()
+    {
+        if (!debugMode)
+        {
+            debugSelectedQuestion = Mathf.Clamp(round - 1, 0, 9);
+            debugSelectedChoice = 0;
+            LoadDebugInputs();
+            debugMode = true;
+        }
+        else
+        {
+            // 適用ボタンを押していない入力内容は反映せず閉じる
+            debugMode = false;
+            GUI.FocusControl(null);
+        }
+    }
+
+    private void OnGUI()
+    {
+        if (!debugMode)
+            return;
+
+        float windowWidth = Mathf.Min(540f, Screen.width - 20f);
+        float windowHeight = Mathf.Min(650f, Screen.height - 20f);
+
+        debugWindowRect.width = windowWidth;
+        debugWindowRect.height = windowHeight;
+        debugWindowRect.x = Mathf.Clamp(
+            debugWindowRect.x, 0f, Mathf.Max(0f, Screen.width - windowWidth)
+        );
+        debugWindowRect.y = Mathf.Clamp(
+            debugWindowRect.y, 0f, Mathf.Max(0f, Screen.height - windowHeight)
+        );
+
+        debugWindowRect = GUI.Window(
+            814271,
+            debugWindowRect,
+            DrawDebugWindow,
+            "DEBUG MODE"
+        );
+    }
+
+    private void DrawDebugWindow(int windowId)
+    {
+        debugScrollPosition = GUILayout.BeginScrollView(
+            debugScrollPosition,
+            GUILayout.Height(debugWindowRect.height - 55f)
+        );
+
+        GUILayout.Label("現在のゲーム：" + round + "問目");
+        GUILayout.BeginHorizontal();
+
+        if (currentState == GameState.Question)
+        {
+            if (GUILayout.Button(
+                debugTimerPaused ? "カウント再生" : "カウント一時停止",
+                GUILayout.Height(36f)))
+            {
+                debugTimerPaused = !debugTimerPaused;
+            }
+        }
+        else
+        {
+            GUILayout.Label("カウント操作は問題表示中のみ可能です。");
+        }
+
+        if (GUILayout.Button("閉じる（D）", GUILayout.Height(36f)))
+        {
+            debugMode = false;
+            GUI.FocusControl(null);
+        }
+
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(8f);
+        GUILayout.Label("編集する問題");
+        string[] questionLabels =
+        {
+            "1問目", "2問目", "3問目", "4問目", "5問目",
+            "6問目", "7問目", "8問目", "9問目", "10問目"
+        };
+        int nextQuestion = GUILayout.SelectionGrid(
+            debugSelectedQuestion,
+            questionLabels,
+            5
+        );
+
+        if (nextQuestion != debugSelectedQuestion)
+        {
+            if (TryApplyDebugInputs())
+            {
+                debugSelectedQuestion = nextQuestion;
+                LoadDebugInputs();
+            }
+        }
+
+        GUILayout.Space(6f);
+        GUILayout.Label("編集する選択肢");
+        int nextChoice = GUILayout.Toolbar(
+            debugSelectedChoice,
+            new string[] { "A", "B" }
+        );
+
+        if (nextChoice != debugSelectedChoice)
+        {
+            if (TryApplyDebugInputs())
+            {
+                debugSelectedChoice = nextChoice;
+                LoadDebugInputs();
+            }
+        }
+
+        GUILayout.Space(6f);
+        GUILayout.Label("計算方法");
+        string[] methodLabels =
+        {
+            "報酬を加算",
+            "毎ターン加算",
+            "所持金倍率"
+        };
+        debugCalculationMethodIndex = GUILayout.Toolbar(
+            debugCalculationMethodIndex,
+            methodLabels
+        );
+
+        GUILayout.Space(6f);
+        GUILayout.Label("各結果の確率と報酬");
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("結果", GUILayout.Width(48f));
+        GUILayout.Label("確率（％）", GUILayout.Width(90f));
+        GUILayout.Label("報酬", GUILayout.Width(110f));
+        GUILayout.EndHorizontal();
+
+        for (int i = 0; i < 3; i++)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("結果" + (i + 1), GUILayout.Width(48f));
+            debugProbabilityInputs[i] = GUILayout.TextField(
+                debugProbabilityInputs[i],
+                GUILayout.Width(90f)
+            );
+            debugRewardInputs[i] = GUILayout.TextField(
+                debugRewardInputs[i],
+                GUILayout.Width(110f)
+            );
+            GUILayout.EndHorizontal();
+        }
+
+        GUILayout.Space(6f);
+        GUILayout.Label("個別の問題文（空欄なら自動生成）");
+        debugCustomTextInput = GUILayout.TextArea(
+            debugCustomTextInput,
+            GUILayout.MinHeight(65f)
+        );
+
+        GUILayout.Label("確率3つの合計は100％にしてください。");
+        GUILayout.BeginHorizontal();
+
+        if (GUILayout.Button("設定を反映", GUILayout.Height(36f)))
+            TryApplyDebugInputs();
+
+        if (GUILayout.Button("読み込み直す", GUILayout.Height(36f)))
+            LoadDebugInputs();
+
+        GUILayout.EndHorizontal();
+
+        if (!string.IsNullOrEmpty(debugValidationMessage))
+            GUILayout.Label(debugValidationMessage);
+
+        GUILayout.EndScrollView();
+        GUI.DragWindow(new Rect(0f, 0f, 10000f, 22f));
+    }
+
+    private void LoadDebugInputs()
+    {
+        int questionIndex = Mathf.Clamp(debugSelectedQuestion, 0, 9);
+        int[,] probabilities = debugSelectedChoice == 0
+            ? probabilitiesA
+            : probabilitiesB;
+        int[,] rewards = debugSelectedChoice == 0
+            ? outcomeMoneyA
+            : outcomeMoneyB;
+        ScoreCalculationMethod[] methods = debugSelectedChoice == 0
+            ? scoreCalculationMethodsA
+            : scoreCalculationMethodsB;
+        string[] customTexts = debugSelectedChoice == 0
+            ? customQuestionTextsA
+            : customQuestionTextsB;
+
+        for (int i = 0; i < 3; i++)
+        {
+            debugProbabilityInputs[i] =
+                probabilities[questionIndex, i].ToString();
+            debugRewardInputs[i] =
+                rewards[questionIndex, i].ToString();
+        }
+
+        debugCalculationMethodIndex = (int)methods[questionIndex];
+        debugCustomTextInput = customTexts[questionIndex] ?? "";
+        debugValidationMessage = "";
+    }
+
+    private bool TryApplyDebugInputs()
+    {
+        int[] newProbabilities = new int[3];
+        int[] newRewards = new int[3];
+        int probabilityTotal = 0;
+
+        for (int i = 0; i < 3; i++)
+        {
+            if (!int.TryParse(debugProbabilityInputs[i], out newProbabilities[i]))
+            {
+                debugValidationMessage =
+                    "結果" + (i + 1) + "の確率を整数で入力してください。";
+                return false;
+            }
+
+            if (newProbabilities[i] < 0 || newProbabilities[i] > 100)
+            {
+                debugValidationMessage =
+                    "確率は0～100の範囲で入力してください。";
+                return false;
+            }
+
+            if (!int.TryParse(debugRewardInputs[i], out newRewards[i]))
+            {
+                debugValidationMessage =
+                    "結果" + (i + 1) + "の報酬を整数で入力してください。";
+                return false;
+            }
+
+            probabilityTotal += newProbabilities[i];
+        }
+
+        if (probabilityTotal != 100)
+        {
+            debugValidationMessage =
+                "確率の合計が" + probabilityTotal +
+                "％です。合計を100％にしてください。";
+            return false;
+        }
+
+        int questionIndex = Mathf.Clamp(debugSelectedQuestion, 0, 9);
+        int[,] probabilities = debugSelectedChoice == 0
+            ? probabilitiesA
+            : probabilitiesB;
+        int[,] rewards = debugSelectedChoice == 0
+            ? outcomeMoneyA
+            : outcomeMoneyB;
+        ScoreCalculationMethod[] methods = debugSelectedChoice == 0
+            ? scoreCalculationMethodsA
+            : scoreCalculationMethodsB;
+        string[] customTexts = debugSelectedChoice == 0
+            ? customQuestionTextsA
+            : customQuestionTextsB;
+
+        for (int i = 0; i < 3; i++)
+        {
+            probabilities[questionIndex, i] = newProbabilities[i];
+            rewards[questionIndex, i] = newRewards[i];
+        }
+
+        methods[questionIndex] =
+            (ScoreCalculationMethod)Mathf.Clamp(
+                debugCalculationMethodIndex, 0, 2
+            );
+
+        customTexts[questionIndex] =
+            string.IsNullOrWhiteSpace(debugCustomTextInput)
+                ? ""
+                : debugCustomTextInput;
+
+        if (currentState == GameState.Question &&
+            questionIndex == round - 1)
+        {
+            UpdateQuestionText();
+        }
+
+        debugValidationMessage = "設定を反映しました。";
+        return true;
+    }
+
+    // =========================================================
     // タイマー処理
     // =========================================================
 
@@ -410,6 +725,8 @@ public class GameManager : MonoBehaviour
         if (questionTimerCoroutine != null)
             StopCoroutine(questionTimerCoroutine);
 
+        questionTimeRemaining = questionTimeLimit;
+        debugTimerPaused = false;
         questionTimerCoroutine = StartCoroutine(QuestionTimer());
     }
 
@@ -421,23 +738,33 @@ public class GameManager : MonoBehaviour
             questionTimerCoroutine = null;
         }
 
+        debugTimerPaused = false;
+
         if (questionTimerText != null)
             questionTimerText.gameObject.SetActive(false);
     }
 
     private IEnumerator QuestionTimer()
     {
-        float timeLeft = questionTimeLimit;
-
         questionTimerText.gameObject.SetActive(true);
 
-        while (timeLeft > 0f)
+        while (questionTimeRemaining > 0f)
         {
+            if (debugTimerPaused)
+            {
+                questionTimerText.text =
+                    "一時停止：残り " +
+                    Mathf.CeilToInt(questionTimeRemaining) + " 秒";
+
+                yield return null;
+                continue;
+            }
+
             questionTimerText.text =
-                "残り " + Mathf.CeilToInt(timeLeft) + " 秒";
+                "残り " + Mathf.CeilToInt(questionTimeRemaining) + " 秒";
 
             yield return null;
-            timeLeft -= Time.deltaTime;
+            questionTimeRemaining -= Time.deltaTime;
         }
 
         questionTimerCoroutine = null;
@@ -974,6 +1301,9 @@ public class GameManager : MonoBehaviour
 
         // ゲームの進行状況を初期状態へ戻す
         currentState = GameState.Title;
+        debugMode = false;
+        debugTimerPaused = false;
+        GUI.FocusControl(null);
         score = -1000000;
         displayedScore = score;
         round = 1;
