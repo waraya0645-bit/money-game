@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using System.IO;
+using System.Text;
 
 public class GameManager : MonoBehaviour
 {
@@ -605,11 +606,152 @@ public class GameManager : MonoBehaviour
 
         GUILayout.EndHorizontal();
 
+        if (GUILayout.Button("GameManager.cs用コードをコピー・保存", GUILayout.Height(40f)))
+            SaveDebugSettingsCode();
+
         if (!string.IsNullOrEmpty(debugValidationMessage))
             GUILayout.Label(debugValidationMessage);
 
         GUILayout.EndScrollView();
         GUI.DragWindow(new Rect(0f, 0f, 10000f, 22f));
+    }
+
+    // デバッグ画面で編集した全設定をGameManager.csに貼り付けられるコードとして保存する
+    private void SaveDebugSettingsCode()
+    {
+        // 現在編集中の内容も含めるため、先に入力を検証して反映する
+        if (!TryApplyDebugInputs())
+            return;
+
+        string code = BuildDebugSettingsCode();
+
+        // すぐに貼り付けられるよう、クリップボードにもコピーする
+        GUIUtility.systemCopyBuffer = code;
+
+        string savePath = Path.Combine(
+            Application.persistentDataPath,
+            "GameManagerSettings.txt"
+        );
+
+        try
+        {
+            File.WriteAllText(savePath, code, Encoding.UTF8);
+            debugValidationMessage =
+                "コードをコピーし、ファイルにも保存しました。保存先：" + savePath;
+        }
+        catch (System.Exception exception)
+        {
+            debugValidationMessage =
+                "コードはコピーしましたが、ファイル保存に失敗しました。";
+            Debug.LogWarning(
+                "GameManagerSettings.txtを保存できませんでした。 " +
+                exception.Message
+            );
+        }
+    }
+
+    // GameManager.cs内の設定フィールドを置き換えられる形式で生成する
+    private string BuildDebugSettingsCode()
+    {
+        StringBuilder code = new StringBuilder();
+
+        code.AppendLine("// デバッグモードから書き出した設定です。");
+        code.AppendLine("// GameManager.cs内の同名フィールド定義と置き換えてください。");
+        code.AppendLine();
+
+        AppendCalculationMethodArray(
+            code, "scoreCalculationMethodsA", scoreCalculationMethodsA
+        );
+        AppendCalculationMethodArray(
+            code, "scoreCalculationMethodsB", scoreCalculationMethodsB
+        );
+
+        AppendIntMatrix(code, "probabilitiesA", probabilitiesA);
+        AppendIntMatrix(code, "outcomeMoneyA", outcomeMoneyA);
+        AppendIntMatrix(code, "probabilitiesB", probabilitiesB);
+        AppendIntMatrix(code, "outcomeMoneyB", outcomeMoneyB);
+
+        AppendStringArray(code, "customQuestionTextsA", customQuestionTextsA);
+        AppendStringArray(code, "customQuestionTextsB", customQuestionTextsB);
+
+        return code.ToString();
+    }
+
+    private void AppendCalculationMethodArray(
+        StringBuilder code,
+        string fieldName,
+        ScoreCalculationMethod[] values)
+    {
+        code.AppendLine("private ScoreCalculationMethod[] " + fieldName + " =");
+        code.AppendLine("{");
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            string suffix = i == values.Length - 1 ? "" : ",";
+            code.AppendLine("    ScoreCalculationMethod." + values[i] + suffix);
+        }
+
+        code.AppendLine("};");
+        code.AppendLine();
+    }
+
+    private void AppendIntMatrix(
+        StringBuilder code,
+        string fieldName,
+        int[,] values)
+    {
+        code.AppendLine("private int[,] " + fieldName + " =");
+        code.AppendLine("{");
+
+        for (int row = 0; row < values.GetLength(0); row++)
+        {
+            code.Append("    { ");
+
+            for (int column = 0; column < values.GetLength(1); column++)
+            {
+                if (column > 0)
+                    code.Append(", ");
+
+                code.Append(values[row, column]);
+            }
+
+            string suffix = row == values.GetLength(0) - 1 ? " }" : " },";
+            code.AppendLine(suffix);
+        }
+
+        code.AppendLine("};");
+        code.AppendLine();
+    }
+
+    private void AppendStringArray(
+        StringBuilder code,
+        string fieldName,
+        string[] values)
+    {
+        code.AppendLine("[SerializeField] private string[] " + fieldName + " =");
+        code.AppendLine("{");
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            string suffix = i == values.Length - 1 ? "" : ",";
+            code.AppendLine(
+                "    \"" + EscapeCSharpString(values[i]) + "\"" + suffix
+            );
+        }
+
+        code.AppendLine("};");
+        code.AppendLine();
+    }
+
+    // 問題文に含まれる改行・引用符などをC#文字列として安全に書き出す
+    private string EscapeCSharpString(string value)
+    {
+        return (value ?? "")
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\r", "\\r")
+            .Replace("\n", "\\n")
+            .Replace("\t", "\\t");
     }
 
     private void LoadDebugInputs()
