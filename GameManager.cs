@@ -422,23 +422,47 @@ public class GameManager : MonoBehaviour
             ResetDebugSequence();
         }
 
-        // デバッグ画面を操作している間は、ゲーム側のタップ処理を行わない
-        if (debugMode)
-            return;
-
-        if (currentState != GameState.MoneyAnimating)
-            return;
-
-        bool tapped = Input.GetMouseButtonDown(0);
-
-        if (Input.touchCount > 0 &&
-            Input.GetTouch(0).phase == TouchPhase.Began)
+        // 金額アニメーション中は、デバッグウィンドウ外のタップでスキップできる
+        if (currentState == GameState.MoneyAnimating)
         {
-            tapped = true;
+            bool tappedOutsideDebugWindow = false;
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                tappedOutsideDebugWindow =
+                    !IsPointerOverDebugWindow(Input.mousePosition);
+            }
+
+            if (Input.touchCount > 0 &&
+                Input.GetTouch(0).phase == TouchPhase.Began)
+            {
+                tappedOutsideDebugWindow =
+                    !IsPointerOverDebugWindow(Input.GetTouch(0).position);
+            }
+
+            if (tappedOutsideDebugWindow)
+                FinishMoneyAnimation();
+
+            return;
         }
 
-        if (tapped)
-            FinishMoneyAnimation();
+        // それ以外の状態では、デバッグ画面の操作をゲーム側に渡さない
+        if (debugMode)
+            return;
+    }
+
+    // 画面座標をGUI座標へ変換し、クリック位置がデバッグウィンドウ内か判定する
+    private bool IsPointerOverDebugWindow(Vector2 screenPosition)
+    {
+        if (!debugMode)
+            return false;
+
+        Vector2 guiPosition = new Vector2(
+            screenPosition.x,
+            Screen.height - screenPosition.y
+        );
+
+        return debugWindowRect.Contains(guiPosition);
     }
 
     // 隠しコマンドが3秒以内に正しい順番で入力されたか確認する
@@ -1521,8 +1545,12 @@ public class GameManager : MonoBehaviour
 
         while (true)
         {
-            if (Input.GetMouseButtonDown(0))
+            // デバッグウィンドウ内で始まったクリックは回答結果画面の操作に使わない
+            if (Input.GetMouseButtonDown(0) &&
+                !IsPointerOverDebugWindow(Input.mousePosition))
+            {
                 mousePressed = true;
+            }
 
             if (mousePressed && Input.GetMouseButtonUp(0))
                 yield break;
@@ -1531,8 +1559,11 @@ public class GameManager : MonoBehaviour
             {
                 Touch touch = Input.GetTouch(0);
 
-                if (touch.phase == TouchPhase.Began)
+                if (touch.phase == TouchPhase.Began &&
+                    !IsPointerOverDebugWindow(touch.position))
+                {
                     touchPressed = true;
+                }
 
                 if (touchPressed &&
                     (touch.phase == TouchPhase.Ended ||
