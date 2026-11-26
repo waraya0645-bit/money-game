@@ -231,7 +231,12 @@ public class GameManager : MonoBehaviour
                 button = leftButton.GetComponentInChildren<Button>();
 
             if (button != null)
+            {
+                ColorBlock colors = button.colors;
+                colors.disabledColor = colors.normalColor;
+                button.colors = colors;
                 button.interactable = interactable;
+            }
         }
 
         if (rightButton != null)
@@ -241,7 +246,12 @@ public class GameManager : MonoBehaviour
                 button = rightButton.GetComponentInChildren<Button>();
 
             if (button != null)
+            {
+                ColorBlock colors = button.colors;
+                colors.disabledColor = colors.normalColor;
+                button.colors = colors;
                 button.interactable = interactable;
+            }
         }
     }
 
