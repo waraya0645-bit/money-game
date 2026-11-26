@@ -221,6 +221,10 @@ public class GameManager : MonoBehaviour
 
     private GameState currentState = GameState.Title;
 
+    // 選択肢ボタンの元の色を保存
+    private Color leftButtonOriginalColor = Color.white;
+    private Color rightButtonOriginalColor = Color.white;
+
     // A/Bボタンの押下可否を切り替える
     private void SetChoiceButtonsInteractable(bool interactable)
     {
@@ -253,6 +257,59 @@ public class GameManager : MonoBehaviour
                 button.interactable = interactable;
             }
         }
+    }
+
+    // 選択肢ボタンの色を保存する
+    private void CacheChoiceButtonColors()
+    {
+        Button left = GetChoiceButton(leftButton);
+        Button right = GetChoiceButton(rightButton);
+
+        if (left != null && left.targetGraphic != null)
+            leftButtonOriginalColor = left.targetGraphic.color;
+
+        if (right != null && right.targetGraphic != null)
+            rightButtonOriginalColor = right.targetGraphic.color;
+    }
+
+    private Button GetChoiceButton(GameObject choiceObject)
+    {
+        if (choiceObject == null)
+            return null;
+
+        Button button = choiceObject.GetComponent<Button>();
+        if (button == null)
+            button = choiceObject.GetComponentInChildren<Button>();
+
+        return button;
+    }
+
+    // 報酬の判定値に応じて、選択したボタンの色を変える
+    private void SetSelectedChoiceColor(bool isA, int judgmentValue)
+    {
+        Button button = GetChoiceButton(isA ? leftButton : rightButton);
+        if (button == null || button.targetGraphic == null)
+            return;
+
+        if (judgmentValue > 0)
+            button.targetGraphic.color = Color.green;
+        else if (judgmentValue < 0)
+            button.targetGraphic.color = Color.red;
+        else
+            button.targetGraphic.color = Color.gray;
+    }
+
+    // 次の問題へ進むとき、選択肢ボタンの色を元に戻す
+    private void ResetChoiceButtonColors()
+    {
+        Button left = GetChoiceButton(leftButton);
+        Button right = GetChoiceButton(rightButton);
+
+        if (left != null && left.targetGraphic != null)
+            left.targetGraphic.color = leftButtonOriginalColor;
+
+        if (right != null && right.targetGraphic != null)
+            right.targetGraphic.color = rightButtonOriginalColor;
     }
 
     // =========================================================
@@ -297,6 +354,7 @@ public class GameManager : MonoBehaviour
     {
         currentState = GameState.Title;
         displayedScore = score;
+        CacheChoiceButtonColors();
 
         if (endingPanels != null)
         {
@@ -1149,6 +1207,26 @@ public class GameManager : MonoBehaviour
             scoreCalculationMethodsA[round - 1]
         );
 
+        int judgmentValue;
+        if (scoreCalculationMethodsA[round - 1] == ScoreCalculationMethod.AddRewardEveryAnswer)
+            judgmentValue = recurringBonusPerAnswer;
+        else if (scoreCalculationMethodsA[round - 1] == ScoreCalculationMethod.AddCurrentScore)
+            judgmentValue = beforeMoney * reward / 100;
+        else
+            judgmentValue = reward;
+
+        SetSelectedChoiceColor(true, judgmentValue);
+
+        int judgmentValue;
+        if (scoreCalculationMethodsB[round - 1] == ScoreCalculationMethod.AddRewardEveryAnswer)
+            judgmentValue = recurringBonusPerAnswer;
+        else if (scoreCalculationMethodsB[round - 1] == ScoreCalculationMethod.AddCurrentScore)
+            judgmentValue = beforeMoney * reward / 100;
+        else
+            judgmentValue = reward;
+
+        SetSelectedChoiceColor(false, judgmentValue);
+
         int gained = afterScore - score;
         score = afterScore;
         moneyAfterChoice[round - 1] = score;
@@ -1380,6 +1458,7 @@ public class GameManager : MonoBehaviour
         if (round < 10)
         {
             round++;
+            ResetChoiceButtonColors();
             UpdateQuestionText();
 
             leftButton.SetActive(true);
