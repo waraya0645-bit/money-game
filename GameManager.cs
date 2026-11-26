@@ -221,6 +221,30 @@ public class GameManager : MonoBehaviour
 
     private GameState currentState = GameState.Title;
 
+    // A/Bボタンの押下可否を切り替える
+    private void SetChoiceButtonsInteractable(bool interactable)
+    {
+        if (leftButton != null)
+        {
+            Button button = leftButton.GetComponent<Button>();
+            if (button == null)
+                button = leftButton.GetComponentInChildren<Button>();
+
+            if (button != null)
+                button.interactable = interactable;
+        }
+
+        if (rightButton != null)
+        {
+            Button button = rightButton.GetComponent<Button>();
+            if (button == null)
+                button = rightButton.GetComponentInChildren<Button>();
+
+            if (button != null)
+                button.interactable = interactable;
+        }
+    }
+
     // =========================================================
     // タイマー
     // =========================================================
@@ -1304,6 +1328,9 @@ public class GameManager : MonoBehaviour
         currentState = GameState.AnswerResult;
         isShowingAnswerResult = true;
 
+        // 回答結果画面中はA/Bボタンを押せないようにする
+        SetChoiceButtonsInteractable(false);
+
 
         string gainedText = (gained >= 0 ? "+" : "") + gained.ToString("N0");
 
@@ -1347,6 +1374,7 @@ public class GameManager : MonoBehaviour
 
             leftButton.SetActive(true);
             rightButton.SetActive(true);
+            SetChoiceButtonsInteractable(true);
 
             currentState = GameState.Question;
             isShowingAnswerResult = false;
@@ -1693,6 +1721,7 @@ public class GameManager : MonoBehaviour
         questionTextObject.SetActive(true);
         leftButton.SetActive(true);
         rightButton.SetActive(true);
+        SetChoiceButtonsInteractable(true);
 
         StartQuestionTimer();
     }
