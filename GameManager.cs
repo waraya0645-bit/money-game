@@ -830,6 +830,25 @@ public class GameManager : MonoBehaviour
             GUILayout.EndHorizontal();
         }
 
+        GUILayout.Space(8f);
+        decimal expectedValue;
+        string expectedValueError;
+
+        if (TryCalculateDebugExpectedValue(
+            out expectedValue,
+            out expectedValueError))
+        {
+            string expectedSign = expectedValue > 0m ? "+" : "";
+            GUILayout.Label(
+                "今回の増加額の期待値：" +
+                expectedSign + expectedValue.ToString("N2") + "円"
+            );
+        }
+        else
+        {
+            GUILayout.Label("期待値を計算できません：" + expectedValueError);
+        }
+
         GUILayout.Space(6f);
         GUILayout.Label("個別の問題文（空欄なら自動生成）");
         debugCustomTextInput = GUILayout.TextArea(
@@ -1041,6 +1060,71 @@ public class GameManager : MonoBehaviour
             .Replace("\r", "\\r")
             .Replace("\n", "\\n")
             .Replace("\t", "\\t");
+    }
+
+    // デバッグ画面で編集中の値から、今回の増加額の期待値を計算する
+    // 既存の継続報酬は含めず、AddRewardEveryAnswerも今回追加する分だけを使う
+    private bool TryCalculateDebugExpectedValue(
+        out decimal expectedValue,
+        out string errorMessage)
+    {
+        expectedValue = 0m;
+        errorMessage = "";
+
+        int[] probabilities = new int[3];
+        int[] rewards = new int[3];
+        int probabilityTotal = 0;
+
+        for (int i = 0; i < 3; i++)
+        {
+            if (!int.TryParse(debugProbabilityInputs[i], out probabilities[i]))
+            {
+                errorMessage = "確率は整数で入力してください。";
+                return false;
+            }
+
+            if (probabilities[i] < 0 || probabilities[i] > 100)
+            {
+                errorMessage = "確率は0～100の範囲で入力してください。";
+                return false;
+            }
+
+            if (!int.TryParse(debugRewardInputs[i], out rewards[i]))
+            {
+                errorMessage = "報酬は整数で入力してください。";
+                return false;
+            }
+
+            probabilityTotal += probabilities[i];
+        }
+
+        if (probabilityTotal != 100)
+        {
+            errorMessage =
+                "確率の合計が" + probabilityTotal +
+                "％です（100％にしてください）。";
+            return false;
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            decimal outcomeIncrease = rewards[i];
+
+            if (debugCalculationMethodIndex ==
+                (int)ScoreCalculationMethod.AddCurrentScore)
+            {
+                // ゲーム内と同じく、各結果の増加額を整数にしてから期待値へ加える
+                outcomeIncrease = decimal.Truncate(
+                    (decimal)score * rewards[i] / 100m
+                );
+            }
+
+            // AddRewardEveryAnswerは今回新しく加える報酬だけを対象にする
+            expectedValue +=
+                outcomeIncrease * probabilities[i] / 100m;
+        }
+
+        return true;
     }
 
     private void LoadDebugInputs()
