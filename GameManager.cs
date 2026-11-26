@@ -1052,6 +1052,17 @@ public class GameManager : MonoBehaviour
             questionTimeRemaining -= Time.deltaTime;
         }
 
+        if (currentState != GameState.Question)
+        {
+            questionTimerCoroutine = null;
+            yield break;
+        }
+
+        // 0秒の表示を画面に反映してから、未選択の回答結果へ進む
+        questionTimeRemaining = 0f;
+        questionTimerText.text = "残り 0 秒";
+        yield return null;
+
         questionTimerCoroutine = null;
 
         if (currentState != GameState.Question)
