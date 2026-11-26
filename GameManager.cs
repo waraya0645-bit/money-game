@@ -678,12 +678,32 @@ public class GameManager : MonoBehaviour
             debugWindowRect.y, 0f, Mathf.Max(0f, Screen.height - windowHeight)
         );
 
+        // デバッグ画面内の文字を少し大きくする
+        int oldLabelFontSize = GUI.skin.label.fontSize;
+        int oldButtonFontSize = GUI.skin.button.fontSize;
+        int oldTextFieldFontSize = GUI.skin.textField.fontSize;
+        int oldTextAreaFontSize = GUI.skin.textArea.fontSize;
+        int oldWindowFontSize = GUI.skin.window.fontSize;
+
+        GUI.skin.label.fontSize = 15;
+        GUI.skin.button.fontSize = 15;
+        GUI.skin.textField.fontSize = 15;
+        GUI.skin.textArea.fontSize = 15;
+        GUI.skin.window.fontSize = 15;
+
         debugWindowRect = GUI.Window(
             814271,
             debugWindowRect,
             DrawDebugWindow,
             "DEBUG MODE"
         );
+
+        // デバッグ画面以外のGUIに影響しないよう元の文字サイズへ戻す
+        GUI.skin.label.fontSize = oldLabelFontSize;
+        GUI.skin.button.fontSize = oldButtonFontSize;
+        GUI.skin.textField.fontSize = oldTextFieldFontSize;
+        GUI.skin.textArea.fontSize = oldTextAreaFontSize;
+        GUI.skin.window.fontSize = oldWindowFontSize;
     }
 
     private void DrawDebugWindow(int windowId)
