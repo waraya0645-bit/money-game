@@ -225,6 +225,12 @@ public class GameManager : MonoBehaviour
     private Color leftButtonOriginalColor = Color.white;
     private Color rightButtonOriginalColor = Color.white;
 
+    // 報酬の判定結果に使う色（Inspectorから変更可能）
+    [Header("報酬判定の色")]
+    [SerializeField] private Color positiveRewardColor = Color.green;
+    [SerializeField] private Color negativeRewardColor = Color.red;
+    [SerializeField] private Color zeroRewardColor = Color.gray;
+
     // A/Bボタンの押下可否を切り替える
     private void SetChoiceButtonsInteractable(bool interactable)
     {
@@ -292,11 +298,11 @@ public class GameManager : MonoBehaviour
             return;
 
         if (judgmentValue > 0)
-            button.targetGraphic.color = Color.green;
+            button.targetGraphic.color = positiveRewardColor;
         else if (judgmentValue < 0)
-            button.targetGraphic.color = Color.red;
+            button.targetGraphic.color = negativeRewardColor;
         else
-            button.targetGraphic.color = Color.gray;
+            button.targetGraphic.color = zeroRewardColor;
     }
 
     // 次の問題へ進むとき、選択肢ボタンの色を元に戻す
