@@ -716,6 +716,11 @@ public class GameManager : MonoBehaviour
         GUILayout.Label("現在のゲーム：" + round + "問目");
         GUILayout.BeginHorizontal();
 
+        if (GUILayout.Button("最初に戻る", GUILayout.Height(36f)))
+        {
+            ReturnToTitle();
+        }
+
         if (currentState == GameState.Question)
         {
             if (GUILayout.Button(
@@ -1347,6 +1352,9 @@ public class GameManager : MonoBehaviour
         currentState = GameState.MoneyAnimating;
         isShowingAnswerResult = true;
 
+        // 金額アニメーション開始時点でA/Bボタンを操作不可にする
+        SetChoiceButtonsInteractable(false);
+
         displayedScore = beforeMoney;
         UpdateMoneyText();
 
@@ -1790,7 +1798,7 @@ public class GameManager : MonoBehaviour
 
         // デバッグ画面の一時状態だけを初期化する
         // 問題データ本体（確率・報酬・計算方法・個別問題文）は変更しない
-        debugMode = false;
+        // タイトルへ戻ってもデバッグモードは開いたままにする
         debugTimerPaused = false;
         ResetDebugSequence();
         debugSelectedQuestion = 0;
