@@ -1027,9 +1027,6 @@ public class GameManager : MonoBehaviour
         }
 
         debugTimerPaused = false;
-
-        if (questionTimerText != null)
-            questionTimerText.gameObject.SetActive(false);
     }
 
     private IEnumerator QuestionTimer()
