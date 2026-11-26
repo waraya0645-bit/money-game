@@ -1217,16 +1217,6 @@ public class GameManager : MonoBehaviour
 
         SetSelectedChoiceColor(true, judgmentValue);
 
-        int judgmentValue;
-        if (scoreCalculationMethodsB[round - 1] == ScoreCalculationMethod.AddRewardEveryAnswer)
-            judgmentValue = recurringBonusPerAnswer;
-        else if (scoreCalculationMethodsB[round - 1] == ScoreCalculationMethod.AddCurrentScore)
-            judgmentValue = beforeMoney * reward / 100;
-        else
-            judgmentValue = reward;
-
-        SetSelectedChoiceColor(false, judgmentValue);
-
         int gained = afterScore - score;
         score = afterScore;
         moneyAfterChoice[round - 1] = score;
@@ -1269,6 +1259,16 @@ public class GameManager : MonoBehaviour
             reward,
             scoreCalculationMethodsB[round - 1]
         );
+
+        int judgmentValue;
+        if (scoreCalculationMethodsB[round - 1] == ScoreCalculationMethod.AddRewardEveryAnswer)
+            judgmentValue = recurringBonusPerAnswer;
+        else if (scoreCalculationMethodsB[round - 1] == ScoreCalculationMethod.AddCurrentScore)
+            judgmentValue = beforeMoney * reward / 100;
+        else
+            judgmentValue = reward;
+
+        SetSelectedChoiceColor(false, judgmentValue);
 
         int gained = afterScore - score;
         score = afterScore;
