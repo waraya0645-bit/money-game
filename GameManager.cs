@@ -21,6 +21,25 @@ public class GameManager : MonoBehaviour
     // デバッグモード
     private bool debugMode = false;
     private bool debugTimerPaused = false;
+
+    // 隠しコマンドの入力状態
+    private int debugSequenceIndex = 0;
+    private float debugSequenceStartTime = 0f;
+    private const float debugSequenceTimeLimit = 3f;
+
+    private readonly KeyCode[] debugToggleSequence =
+    {
+        KeyCode.UpArrow,
+        KeyCode.UpArrow,
+        KeyCode.DownArrow,
+        KeyCode.DownArrow,
+        KeyCode.LeftArrow,
+        KeyCode.RightArrow,
+        KeyCode.LeftArrow,
+        KeyCode.RightArrow,
+        KeyCode.B,
+        KeyCode.A
+    };
     private float questionTimeRemaining = 20f;
     private Rect debugWindowRect = new Rect(20f, 20f, 540f, 650f);
     private Vector2 debugScrollPosition;
@@ -269,20 +288,35 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        // Dキーでデバッグモードを開閉する
-        // タイトル画面・問題画面・リザルト画面・詳細画面で使用できる
-        // 入力欄に文字を入力している間は、Dをショートカットとして扱わない
-        bool canOpenDebugMode =
+        // デバッグモードを切り替えられる画面
+        bool canToggleDebugMode =
             currentState == GameState.Title ||
             currentState == GameState.Question ||
             currentState == GameState.FinalResult ||
             currentState == GameState.Detail;
 
-        if (canOpenDebugMode &&
-            Input.GetKeyDown(KeyCode.D) &&
-            GUIUtility.keyboardControl == 0)
+        if (!canToggleDebugMode)
         {
-            ToggleDebugMode();
+            ResetDebugSequence();
+        }
+        else if (GUIUtility.keyboardControl == 0)
+        {
+            // Dキーによる従来の切り替え
+            if (Input.GetKeyDown(KeyCode.D))
+            {
+                ResetDebugSequence();
+                ToggleDebugMode();
+            }
+            else
+            {
+                // 隠しコマンドによる切り替え
+                CheckDebugToggleSequence();
+            }
+        }
+        else
+        {
+            // 入力欄を操作中は隠しコマンドを受け付けない
+            ResetDebugSequence();
         }
 
         // デバッグ画面を操作している間は、ゲーム側のタップ処理を行わない
@@ -302,6 +336,62 @@ public class GameManager : MonoBehaviour
 
         if (tapped)
             FinishMoneyAnimation();
+    }
+
+    // 隠しコマンドが3秒以内に正しい順番で入力されたか確認する
+    private void CheckDebugToggleSequence()
+    {
+        if (debugSequenceIndex > 0 &&
+            Time.unscaledTime - debugSequenceStartTime > debugSequenceTimeLimit)
+        {
+            ResetDebugSequence();
+        }
+
+        KeyCode pressedKey = KeyCode.None;
+
+        for (int i = 0; i < debugToggleSequence.Length; i++)
+        {
+            if (Input.GetKeyDown(debugToggleSequence[i]))
+            {
+                pressedKey = debugToggleSequence[i];
+                break;
+            }
+        }
+
+        if (pressedKey == KeyCode.None)
+            return;
+
+        // 途中で順番を間違えた場合は最初からやり直す
+        if (pressedKey != debugToggleSequence[debugSequenceIndex])
+        {
+            ResetDebugSequence();
+
+            // 間違えたキーが先頭キーでもある場合は、新しい入力として扱う
+            if (pressedKey == debugToggleSequence[0])
+            {
+                debugSequenceStartTime = Time.unscaledTime;
+                debugSequenceIndex = 1;
+            }
+
+            return;
+        }
+
+        if (debugSequenceIndex == 0)
+            debugSequenceStartTime = Time.unscaledTime;
+
+        debugSequenceIndex++;
+
+        if (debugSequenceIndex >= debugToggleSequence.Length)
+        {
+            ResetDebugSequence();
+            ToggleDebugMode();
+        }
+    }
+
+    private void ResetDebugSequence()
+    {
+        debugSequenceIndex = 0;
+        debugSequenceStartTime = 0f;
     }
 
     private void UpdateMoneyText()
