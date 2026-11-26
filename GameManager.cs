@@ -22,6 +22,11 @@ public class GameManager : MonoBehaviour
     private bool debugMode = false;
     private bool debugTimerPaused = false;
 
+    // クエスチョンテキストの表示形式
+    // 0：あと〇日、1：〇問目
+    // タイトルへ戻っても選択した形式を保持する
+    private int questionTextDisplayMode = 0;
+
     // 隠しコマンドの入力状態
     private int debugSequenceIndex = 0;
     private float debugSequenceStartTime = 0f;
@@ -499,9 +504,16 @@ public class GameManager : MonoBehaviour
 
     private void UpdateQuestionText()
     {
-        // 1問目は残り10日、2問目は残り9日……10問目は残り1日
-        int remainingDays = 11 - round;
-        questionText.text = "残り" + remainingDays + "日";
+        if (questionTextDisplayMode == 0)
+        {
+            // 1問目はあと10日、2問目はあと9日……10問目はあと1日
+            int remainingDays = 11 - round;
+            questionText.text = "あと" + remainingDays + "日";
+        }
+        else
+        {
+            questionText.text = round + "問目";
+        }
 
         int questionIndex = round - 1;
 
@@ -705,6 +717,19 @@ public class GameManager : MonoBehaviour
         }
 
         GUILayout.EndHorizontal();
+
+        GUILayout.Space(8f);
+        GUILayout.Label("クエスチョンテキストの表示");
+        int nextQuestionTextDisplayMode = GUILayout.Toolbar(
+            questionTextDisplayMode,
+            new string[] { "あと〇日", "〇問目" }
+        );
+
+        if (nextQuestionTextDisplayMode != questionTextDisplayMode)
+        {
+            questionTextDisplayMode = nextQuestionTextDisplayMode;
+            UpdateQuestionText();
+        }
 
         GUILayout.Space(8f);
         GUILayout.Label("編集する問題");
