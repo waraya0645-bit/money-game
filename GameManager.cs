@@ -1713,28 +1713,28 @@ public class GameManager : MonoBehaviour
 
     public void ReturnToTitle()
     {
-        // タイマーや画面遷移など、進行中のコルーチンを停止する
+        // 進行中のタイマー・アニメーション・画面遷移をすべて停止する
         StopAllCoroutines();
         questionTimerCoroutine = null;
         moneyAnimationCoroutine = null;
 
-        // ゲームの進行状況を初期状態へ戻す
+        // ゲーム進行状態を初期化する
         currentState = GameState.Title;
-        debugMode = false;
-        debugTimerPaused = false;
-        GUI.FocusControl(null);
         score = -1000000;
         displayedScore = score;
         round = 1;
         selected = null;
         isShowingAnswerResult = false;
         recurringBonusPerAnswer = 0;
+        questionTimeRemaining = questionTimeLimit;
 
+        // アニメーション途中の値も初期化する
         pendingBeforeMoney = score;
         pendingGained = 0;
         pendingAfterMoney = score;
         pendingTimeout = false;
 
+        // 今回のプレイで記録した選択結果を消去する
         for (int i = 0; i < 10; i++)
         {
             selectedValues[i] = -1;
@@ -1743,9 +1743,36 @@ public class GameManager : MonoBehaviour
             moneyAfterChoice[i] = 0;
         }
 
-        // 表示中の結果・詳細画面を閉じる
+        // デバッグ画面の一時状態だけを初期化する
+        // 問題データ本体（確率・報酬・計算方法・個別問題文）は変更しない
+        debugMode = false;
+        debugTimerPaused = false;
+        ResetDebugSequence();
+        debugSelectedQuestion = 0;
+        debugSelectedChoice = 0;
+        debugCalculationMethodIndex = 0;
+        debugScrollPosition = Vector2.zero;
+        debugValidationMessage = "";
+        debugSavedFilePath = "";
+        debugWindowRect = new Rect(20f, 20f, 540f, 650f);
+        GUI.FocusControl(null);
+        LoadDebugInputs();
+
+        // A/Bボタンの色と押下状態を初期状態へ戻す
+        SetChoiceButtonsInteractable(true);
+        ResetChoiceButtonColors();
+
+        // タイマー表示を初期状態へ戻して非表示にする
         if (questionTimerText != null)
+        {
+            questionTimerText.text =
+                "残り " + Mathf.CeilToInt(questionTimeLimit) + " 秒";
             questionTimerText.gameObject.SetActive(false);
+        }
+
+        // 回答結果の表示を消す
+        if (answerResultText != null)
+            answerResultText.text = "";
 
         if (answerResultPanel != null)
             answerResultPanel.SetActive(false);
@@ -1753,14 +1780,33 @@ public class GameManager : MonoBehaviour
         if (dimOverlay != null)
             dimOverlay.SetActive(false);
 
+        // 最終結果・詳細画面の表示内容を消す
         if (resultDetailText != null)
+        {
+            resultDetailText.text = "";
             resultDetailText.gameObject.SetActive(false);
+        }
 
         if (resultMoneyText != null)
+        {
+            resultMoneyText.text = "";
             resultMoneyText.gameObject.SetActive(false);
+        }
 
         if (resultTendencyText != null)
+        {
+            resultTendencyText.text = "";
             resultTendencyText.gameObject.SetActive(false);
+        }
+
+        if (tendencyDescriptionText != null)
+            tendencyDescriptionText.text = "";
+
+        if (tendencyImage != null)
+            tendencyImage.enabled = false;
+
+        if (gameEndText != null)
+            gameEndText.text = "";
 
         if (detailButton != null)
             detailButton.SetActive(false);
@@ -1771,6 +1817,7 @@ public class GameManager : MonoBehaviour
         if (detailButtonText != null)
             detailButtonText.text = "詳細";
 
+        // エンディング画面をすべて閉じる
         if (endingPanels != null)
         {
             foreach (GameObject panel in endingPanels)
@@ -1779,6 +1826,19 @@ public class GameManager : MonoBehaviour
                     panel.SetActive(false);
             }
         }
+
+        // ゲーム画面の子UIを次回開始時に使える状態へ戻す
+        if (moneyPanel != null)
+            moneyPanel.SetActive(true);
+
+        if (questionTextObject != null)
+            questionTextObject.SetActive(true);
+
+        if (leftButton != null)
+            leftButton.SetActive(true);
+
+        if (rightButton != null)
+            rightButton.SetActive(true);
 
         // 結果画面とゲーム画面を閉じ、タイトル画面を表示する
         if (resultPanel != null)
